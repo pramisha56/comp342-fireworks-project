@@ -267,3 +267,16 @@ class TransformationMatrix:
             result = np.dot(result, matrix)
         
         return result
+    
+
+@dataclass
+class Particle:
+    """Particle with position, velocity, color, and life"""
+    position: np.ndarray
+    velocity: np.ndarray
+    color: np.ndarray
+    life: float
+    size: float
+    trail: list
+
+
