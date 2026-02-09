@@ -633,3 +633,66 @@ class Camera:
         """Get view matrix components"""
         center = self.position + self.front
         return self.position, center, self.up
+
+
+class FireworkSimulation:
+    """Main simulation controller"""
+    
+    def __init__(self):
+        self.fireworks = []
+        self.camera = Camera()
+        self.auto_launch = True
+        self.last_launch = 0
+        self.launch_interval = 1.8
+        
+        self.firework_types = ["burst", "ring", "fountain", "willow"]
+        self.current_type = 0
+    
+    def add_firework(self, position=None, fw_type=None):
+        """Add new firework"""
+        if position is None:
+            position = np.array([
+                random.uniform(-20.0, 20.0),
+                0.0,
+                random.uniform(-20.0, 20.0)
+            ], dtype=np.float32)
+        
+        if fw_type is None:
+            fw_type = random.choice(self.firework_types)
+        
+        self.fireworks.append(Firework(position, fw_type))
+    
+    def cycle_type(self):
+        """Cycle through firework types"""
+        self.current_type = (self.current_type + 1) % len(self.firework_types)
+        print(f"Firework type: {self.firework_types[self.current_type]}")
+    
+    def update(self, dt):
+        """Update simulation"""
+        current_time = time.time()
+        
+        if self.auto_launch and current_time - self.last_launch > self.launch_interval:
+            self.add_firework()
+            self.last_launch = current_time
+        
+        alive = []
+        for fw in self.fireworks:
+            if fw.update(dt):
+                alive.append(fw)
+        self.fireworks = alive
+    
+    def render(self):
+        """Render scene"""
+        # Ground grid
+        glColor4f(0.2, 0.25, 0.3, 0.4)
+        glBegin(GL_LINES)
+        for i in range(-50, 51, 5):
+            glVertex3f(i, 0, -50)
+            glVertex3f(i, 0, 50)
+            glVertex3f(-50, 0, i)
+            glVertex3f(50, 0, i)
+        glEnd()
+        
+        # Render fireworks
+        for fw in self.fireworks:
+            fw.render()
