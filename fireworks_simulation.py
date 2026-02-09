@@ -696,3 +696,139 @@ class FireworkSimulation:
         # Render fireworks
         for fw in self.fireworks:
             fw.render()
+
+
+def main():
+    """Main entry point"""
+    if not glfw.init():
+        return
+
+    glfw.window_hint(glfw.RESIZABLE, glfw.FALSE)
+    glfw.window_hint(glfw.DOUBLEBUFFER, glfw.TRUE)
+    
+    width, height = 1200, 800
+    window = glfw.create_window(width, height, "3D Fireworks - Manual Transformation Matrices", None, None)
+    
+    if not window:
+        glfw.terminate()
+        return
+    
+    glfw.make_context_current(window)
+    glfw.set_input_mode(window, glfw.CURSOR, glfw.CURSOR_DISABLED)
+    
+    # OpenGL settings
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glEnable(GL_POINT_SMOOTH)
+    glEnable(GL_LINE_SMOOTH)
+    glHint(GL_POINT_SMOOTH_HINT, GL_NICEST)
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+    glClearColor(0.01, 0.01, 0.05, 1.0)
+    
+    sim = FireworkSimulation()
+    keys = {}
+    
+    def key_callback(window, key, scancode, action, mods):
+        if action == glfw.PRESS:
+            keys[key] = True
+            if key == glfw.KEY_ESCAPE:
+                glfw.set_window_should_close(window, True)
+            elif key == glfw.KEY_R:
+                sim.auto_launch = not sim.auto_launch
+                print(f"Auto-launch: {'ON' if sim.auto_launch else 'OFF'}")
+            elif key == glfw.KEY_T:
+                sim.cycle_type()
+        elif action == glfw.RELEASE:
+            keys[key] = False
+    
+    def mouse_callback(window, xpos, ypos):
+        sim.camera.process_mouse(xpos, ypos)
+    
+    def scroll_callback(window, xoffset, yoffset):
+        sim.camera.process_scroll(yoffset)
+    
+    def mouse_button_callback(window, button, action, mods):
+        if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS:
+            pos = sim.camera.position + sim.camera.front * 12
+            pos[1] = 0
+            sim.add_firework(pos, sim.firework_types[sim.current_type])
+    
+    glfw.set_key_callback(window, key_callback)
+    glfw.set_cursor_pos_callback(window, mouse_callback)
+    glfw.set_scroll_callback(window, scroll_callback)
+    glfw.set_mouse_button_callback(window, mouse_button_callback)
+    
+    print("=" * 70)
+    print("3D FIREWORKS SIMULATION - MANUAL TRANSFORMATION MATRICES")
+    print("=" * 70)
+    print("\nTRANSFORMATIONS IMPLEMENTED:")
+    print("  ✓ Translation - Manual 4x4 matrix")
+    print("  ✓ Rotation - X, Y, Z, and arbitrary axis (Rodrigues' formula)")
+    print("  ✓ Scaling - Uniform and non-uniform")
+    print("  ✓ Shearing - XY, XZ, YZ planes")
+    print("\nCONTROLS:")
+    print("  Mouse       - Look around")
+    print("  W/A/S/D     - Move camera")
+    print("  SPACE/SHIFT - Up/Down")
+    print("  Scroll      - Zoom")
+    print("  Left Click  - Launch firework")
+    print("  R           - Toggle auto-launch")
+    print("  T           - Cycle firework types")
+    print("  ESC         - Exit")
+    print("\nFIREWORK TYPES:")
+    print("  1. Burst     - Rotation + Scaling")
+    print("  2. Ring      - Scaling (flatten)")
+    print("  3. Fountain  - Shearing + Scaling")
+    print("  4. Willow    - Shearing + Rotation")
+    print("=" * 70)
+    print("\nStarting simulation...\n")
+    
+    last_time = glfw.get_time()
+    
+    while not glfw.window_should_close(window):
+        current_time = glfw.get_time()
+        dt = current_time - last_time
+        last_time = current_time
+        
+        # Input
+        if keys.get(glfw.KEY_W):
+            sim.camera.position += sim.camera.front * sim.camera.speed * dt
+        if keys.get(glfw.KEY_S):
+            sim.camera.position -= sim.camera.front * sim.camera.speed * dt
+        if keys.get(glfw.KEY_A):
+            sim.camera.position -= sim.camera.right * sim.camera.speed * dt
+        if keys.get(glfw.KEY_D):
+            sim.camera.position += sim.camera.right * sim.camera.speed * dt
+        if keys.get(glfw.KEY_SPACE):
+            sim.camera.position += sim.camera.up * sim.camera.speed * dt
+        if keys.get(glfw.KEY_LEFT_SHIFT):
+            sim.camera.position -= sim.camera.up * sim.camera.speed * dt
+        
+        sim.update(dt)
+        
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        
+        # Projection
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(sim.camera.fov, width/height, 0.1, 500.0)
+        
+        # View
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        eye, center, up = sim.camera.get_view_matrix()
+        gluLookAt(eye[0], eye[1], eye[2],
+                  center[0], center[1], center[2],
+                  up[0], up[1], up[2])
+        
+        sim.render()
+        
+        glfw.swap_buffers(window)
+        glfw.poll_events()
+    
+    glfw.terminate()
+
+
+if __name__ == "__main__":
+    main()
