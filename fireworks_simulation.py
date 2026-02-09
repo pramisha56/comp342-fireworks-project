@@ -280,7 +280,6 @@ class Particle:
     trail: list
 
 
-
 class Firework:
     """Firework with rocket and explosion particles"""
     
@@ -553,3 +552,84 @@ class Firework:
             glVertex3f(particle.position[0], particle.position[1], particle.position[2])
             glEnd()
 
+
+class Camera:
+    """First-person camera with mouse look"""
+    
+    def __init__(self):
+        self.position = np.array([0.0, 8.0, 35.0], dtype=np.float32)
+        self.yaw = -90.0
+        self.pitch = 0.0
+        self.speed = 18.0
+        self.sensitivity = 0.1
+        self.fov = 50.0
+        
+        self.front = np.array([0.0, 0.0, -1.0], dtype=np.float32)
+        self.up = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+        self.right = np.array([1.0, 0.0, 0.0], dtype=np.float32)
+        
+        self.last_x = 400
+        self.last_y = 300
+        self.first_mouse = True
+        
+        self.update_vectors()
+    
+    def update_vectors(self):
+        """Update camera direction vectors"""
+        front_x = math.cos(math.radians(self.yaw)) * math.cos(math.radians(self.pitch))
+        front_y = math.sin(math.radians(self.pitch))
+        front_z = math.sin(math.radians(self.yaw)) * math.cos(math.radians(self.pitch))
+        
+        front_length = math.sqrt(front_x**2 + front_y**2 + front_z**2)
+        self.front = np.array([front_x/front_length, front_y/front_length, front_z/front_length], dtype=np.float32)
+        
+        # Calculate right vector
+        right_x = self.front[1] * 0.0 - self.front[2] * 1.0
+        right_y = self.front[2] * 0.0 - self.front[0] * 0.0
+        right_z = self.front[0] * 1.0 - self.front[1] * 0.0
+        right_length = math.sqrt(right_x**2 + right_y**2 + right_z**2)
+        self.right = np.array([right_x/right_length, right_y/right_length, right_z/right_length], dtype=np.float32)
+        
+        # Calculate up vector
+        up_x = self.right[1] * self.front[2] - self.right[2] * self.front[1]
+        up_y = self.right[2] * self.front[0] - self.right[0] * self.front[2]
+        up_z = self.right[0] * self.front[1] - self.right[1] * self.front[0]
+        self.up = np.array([up_x, up_y, up_z], dtype=np.float32)
+    
+    def process_mouse(self, xpos, ypos):
+        """Handle mouse movement"""
+        if self.first_mouse:
+            self.last_x = xpos
+            self.last_y = ypos
+            self.first_mouse = False
+        
+        xoffset = xpos - self.last_x
+        yoffset = self.last_y - ypos
+        self.last_x = xpos
+        self.last_y = ypos
+        
+        xoffset *= self.sensitivity
+        yoffset *= self.sensitivity
+        
+        self.yaw += xoffset
+        self.pitch += yoffset
+        
+        if self.pitch > 89.0:
+            self.pitch = 89.0
+        if self.pitch < -89.0:
+            self.pitch = -89.0
+        
+        self.update_vectors()
+    
+    def process_scroll(self, yoffset):
+        """Handle scroll for zoom"""
+        self.fov -= yoffset * 2
+        if self.fov < 20.0:
+            self.fov = 20.0
+        if self.fov > 80.0:
+            self.fov = 80.0
+    
+    def get_view_matrix(self):
+        """Get view matrix components"""
+        center = self.position + self.front
+        return self.position, center, self.up
